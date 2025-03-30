@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Account | Financial Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background:linear-gradient(to right, #d5eb6c, #59a1e4);
+            color: #e7e4e4;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 30px;
+        }
+        
+        .sidebar {
+            background-color: #1a161671;
+            border-radius: 15px;
+            padding: 30px 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            height: fit-content;
+            color:white;
+        }
+        
+        .profile-card {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: #e0e0e0;
+            margin: 0 auto 15px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .profile-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .profile-email {
+            color: #dedada;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .edit-profile-btn {
+            background-color: #f5f5f5;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .nav-menu {
+            list-style: none;
+        }
+        
+        .nav-item {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        
+        .nav-item.active {
+            background-color: #f0f7ff;
+            color: #3a7bd5;
+            font-weight: bold;
+        }
+        
+        .nav-item i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .main-content {
+            background-color: rgb(21, 22, 22);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        
+        .section-title {
+            font-size: 22px;
+            font-weight: bold;
+        }
+        
+        .account-details {
+            margin-bottom: 40px;
+        }
+        
+        .detail-row {
+            display: flex;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .detail-label {
+            width: 200px;
+            color: #c6c2c2;
+        }
+        
+        .detail-value {
+            flex: 1;
+            font-weight: 500;
+        }
+        
+        .edit-btn {
+            color: #3a7bd5;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .security-section {
+            margin-top: 40px;
+        }
+        
+        .security-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .security-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .security-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #f0f7ff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: #3a7bd5;
+        }
+        
+        .security-status {
+            font-size: 12px;
+            color: #4CAF50;
+            margin-top: 3px;
+        }
+        
+        .security-status.inactive {
+            color: #F44336;
+        }
+        
+        .toggle-btn {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .toggle-btn.inactive {
+            background-color: #e0e0e0;
+            color: #a19d9d;
+        }
+        
+        .connected-devices {
+            margin-top: 30px;
+        }
+        
+        .device-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background-color: #a09d9db7;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .device-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .device-icon {
+            font-size: 20px;
+            margin-right: 15px;
+            color: #b4b2b2;
+        }
+        
+        .device-name {
+            font-weight: 500;
+            color: black;
+        }
+        
+        .device-details {
+            font-size: 12px;
+            color: #adacac;
+            margin-top: 3px;
+        }
+        
+        .logout-btn {
+            color: #F44336;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="profile-card">
+                <div class="profile-avatar">
+                    <!-- Placeholder for avatar image -->
+                    <i class="fas fa-user" style="font-size: 40px; color: #999; line-height: 100px;"></i>
+                </div>
+                <div class="profile-name">Leonardo Cap</div>
+                <div class="profile-email">leonardocc@gmail.com</div>
+                <button class="edit-profile-btn">Edit Profile</button>
+            </div>
+            
+            <ul class="nav-menu">
+                <li class="nav-item active">
+                    <i class="fas fa-user"></i> Account
+                </li>
+                <li class="nav-item">
+                    <i class="fas fa-lock"></i> Security
+                </li>
+                <li class="nav-item">
+                    <i class="fas fa-bell"></i> Notifications
+                </li>
+                <li class="nav-item">
+                    <i class="fas fa-credit-card"></i> Payment Methods
+                </li>
+                <li class="nav-item">
+                    <i class="fas fa-cog"></i> Settings
+                </li>
+                <li class="nav-item">
+                    <i class="fas fa-question-circle"></i> Help
+                </li>
+            </ul>
+        </div>
+        
+        <div class="main-content">
+            <div class="account-details">
+                <div class="section-header">
+                    <div class="section-title">Account Information</div>
+                    <button class="edit-btn">Edit</button>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Full Name</div>
+                    <div class="detail-value">Leonardo Cap</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Email Address</div>
+                    <div class="detail-value">leonardocc@gmail.com</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Phone Number</div>
+                    <div class="detail-value">+1 (555) 123-4567</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Date of Birth</div>
+                    <div class="detail-value">January 15, 1985</div>
+                </div>
+                
+                <div class="detail-row">
+                    <div class="detail-label">Address</div>
+                    <div class="detail-value">
+                        123 Financial Street<br>
+                        New York, NY 10001<br>
+                        United States
+                    </div>
+                </div>
+            </div>
+            
+            <div class="security-section">
+                <div class="section-header">
+                    <div class="section-title">Security</div>
+                </div>
+                
+                <div class="security-item">
+                    <div class="security-info">
+                        <div class="security-icon">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <div>
+                            <div>Password</div>
+                            <div class="security-status">Last changed 3 months ago</div>
+                        </div>
+                    </div>
+                    <button class="toggle-btn">Change</button>
+                </div>
+                
+                <div class="security-item">
+                    <div class="security-info">
+                        <div class="security-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <div>
+                            <div>Two-Factor Authentication</div>
+                            <div class="security-status">Active</div>
+                        </div>
+                    </div>
+                    <button class="toggle-btn inactive">Enable</button>
+                </div>
+                
+                <div class="security-item">
+                    <div class="security-info">
+                        <div class="security-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div>
+                            <div>Login Alerts</div>
+                            <div class="security-status inactive">Inactive</div>
+                        </div>
+                    </div>
+                    <button class="toggle-btn">Enable</button>
+                </div>
+                
+                <div class="connected-devices">
+                    <div class="section-header">
+                        <div class="section-title">Connected Devices</div>
+                    </div>
+                    
+                    <div class="device-card">
+                        <div class="device-info">
+                            <div class="device-icon">
+                                <i class="fas fa-mobile-alt"></i>
+                            </div>
+                            <div>
+                                <div class="device-name">iPhone 13 Pro</div>
+                                <div class="device-details">Last active: Today, 10:45 AM</div>
+                            </div>
+                        </div>
+                        <button class="logout-btn">Log out</button>
+                    </div>
+                    
+                    <div class="device-card">
+                        <div class="device-info">
+                            <div class="device-icon">
+                                <i class="fas fa-laptop"></i>
+                            </div>
+                            <div>
+                                <div class="device-name">MacBook Pro</div>
+                                <div class="device-details">Last active: Yesterday, 3:22 PM</div>
+                            </div>
+                        </div>
+                        <button class="logout-btn">Log out</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
