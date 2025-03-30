@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animated Key Generator</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, #7af25f, #4444af);
+            color: white;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .container {
+            background: rgba(77, 169, 205, 0.675);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0px 0px 20px rgba(255, 255, 255, 0.2);
+            transition: transform 0.3s ease-in-out;
+        }
+        .container:hover {
+            transform: scale(1.05);
+        }
+        button {
+            background: linear-gradient(to right, #d6a56e, #c1ef0a);
+            color: black;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 8px;
+            margin-top: 15px;
+            transition: transform 0.2s ease-in-out;
+        }
+        button:hover {
+            transform: scale(1.1);
+            box-shadow: 0px 0px 10px rgba(230, 230, 230, 0.5);
+        }
+        button:disabled {
+            background: rgb(57, 53, 52);
+            cursor: not-allowed;
+        }
+        .number-display {
+            font-size: 22px;
+            font-weight: bold;
+            margin-top: 20px;
+            word-break: break-word;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+        }
+        .show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        button {
+            background: linear-gradient(to right, #d6a56e, #c1ef0a);
+            color: black;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 8px;
+            margin-top: 15px;
+            transition: transform 0.2s ease-in-out;
+        }
+        button:hover {
+            transform: scale(1.1);
+            box-shadow: 0px 0px 10px rgba(230, 230, 230, 0.5);}
+        .background-video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+            display: none;}
+    </style>
+</head>
+<body>
+    <video class="background-video" id="bgVideo" loop muted>
+        <source src="https://cdn.pixabay.com/video/2016/02/15/2176-155747466_large.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    <div class="container">
+        <h1>Generate Your Public and Private Keys</h1>
+        <button id="generateBtn" onclick="generateNumbers()">Generate</button>
+
+        <div id="publicKeyLabel" style="display: none;">Your Public Key:</div>
+        <div class="number-display" id="randomNumber1">Click the button to generate</div>
+        <div id="privateKeyLabel" style="display: none;">Your Private Key:</div>
+        <div class="number-display" id="randomNumber2"></div>
+        <a href="try.html" style="text-decoration:none"><button id="Continue" style="display: none;">Continue</button></a>
+    </div>
+    <script>
+        function generateNumbers() {
+            let randomDigits1 = "0000";
+            let randomDigits2 = "0000";
+            
+            for (let i = 0; i < 31; i++) {
+                randomDigits1 += Math.floor(Math.random() * 10);
+                randomDigits2 += Math.floor(Math.random() * 10);
+            }
+            
+            document.getElementById("randomNumber1").innerText = randomDigits1;
+            document.getElementById("randomNumber2").innerText = randomDigits2;
+            
+            document.getElementById("publicKeyLabel").style.display = "block";
+            document.getElementById("privateKeyLabel").style.display = "block";
+            document.getElementById("Continue").style.display = "block";
+            
+            document.getElementById("randomNumber1").classList.add("show");
+            document.getElementById("randomNumber2").classList.add("show");
+            
+            document.getElementById("generateBtn").disabled = true;
+            let video = document.getElementById("bgVideo");
+            video.style.display = "block";
+            video.play();
+        }
+        document.addEventListener("mousemove", (event) => {
+                const cursorLight = document.getElementById("cursorLight");
+                cursorLight.style.transform = `translate(${event.clientX}px, ${event.clientY}px)`;
+            });
+    </script>
+</body>
+</html>

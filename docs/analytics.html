@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Neon Transaction Dashboard</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        :root {
+            --dark-bg: #0a0a12;
+            --darker-bg: #050508;
+            --card-bg: linear-gradient(145deg, #0e0e1a, #121225);
+            --text-color: #e0e0ff;
+            --text-muted: #a0a0cc;
+            --neon-green: #0ff0b3;
+            --neon-blue: #2d7dd2;
+            --neon-green-dark: #00c08b;
+            --neon-blue-dark: #1a5b9e;
+            --shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+            --glow: 0 0 10px rgba(47, 255, 210, 0.7);
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: var(--dark-bg);
+            color: var(--text-color);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 20px;
+            height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .chart-container {
+            background: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid rgba(47, 255, 210, 0.1);
+        }
+        
+        #barChart {
+            grid-column: 1;
+            grid-row: 1;
+        }
+        
+        #pieChart {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        
+        #lineChart {
+            grid-column: 1 / span 2;
+            grid-row: 2;
+        }
+        
+        .chart-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--neon-green);
+            text-align: center;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(47, 255, 210, 0.2);
+            text-shadow: var(--glow);
+        }
+        
+        .chart-svg-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .bar {
+            transition: all 0.3s ease;
+            rx: 4px;
+            ry: 4px;
+        }
+        
+        .arc path {
+            stroke: var(--darker-bg);
+            transition: all 0.3s ease;
+        }
+        
+        .line {
+            fill: none;
+            stroke-width: 3px;
+        }
+        
+        .area {
+            opacity: 0.3;
+        }
+        
+        .axis text {
+            font-size: 12px;
+            fill: var(--text-muted);
+        }
+        
+        .axis line, .axis path {
+            stroke: rgba(47, 255, 210, 0.2);
+        }
+        
+        .tooltip {
+            position: absolute;
+            padding: 12px;
+            background: rgba(10, 20, 30, 0.95);
+            color: var(--neon-green);
+            border-radius: 6px;
+            pointer-events: none;
+            font-size: 13px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--neon-blue);
+            backdrop-filter: blur(4px);
+            text-shadow: var(--glow);
+        }
+        
+        .legend-item {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .legend-item:hover {
+            opacity: 0.8;
+            transform: translateX(2px);
+        }
+        
+        .dot {
+            stroke: var(--darker-bg);
+            stroke-width: 2px;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <div class="chart-container" id="barChart">
+            <div class="chart-title">Recent Transactions by Amount</div>
+            <div class="chart-svg-container"></div>
+        </div>
+        <div class="chart-container" id="pieChart">
+            <div class="chart-title">Transaction Categories</div>
+            <div class="chart-svg-container"></div>
+        </div>
+        <div class="chart-container" id="lineChart">
+            <div class="chart-title">Transaction Trends Over Time</div>
+            <div class="chart-svg-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // Shared transaction data
+        const transactions = [
+            { id: 1, date: "2023-05-01", amount: 1200, category: "Salary", type: "income" },
+            { id: 2, date: "2023-05-02", amount: -250, category: "Groceries", type: "expense" },
+            { id: 3, date: "2023-05-03", amount: -80, category: "Dining", type: "expense" },
+            { id: 4, date: "2023-05-04", amount: 500, category: "Freelance", type: "income" },
+            { id: 5, date: "2023-05-05", amount: -120, category: "Transport", type: "expense" },
+            { id: 6, date: "2023-05-06", amount: -65, category: "Entertainment", type: "expense" },
+            { id: 7, date: "2023-05-07", amount: 300, category: "Bonus", type: "income" }
+        ];
+
+        // Parse dates for line chart
+        const parseDate = d3.timeParse("%Y-%m-%d");
+        const transactionsWithDates = transactions.map(d => ({
+            ...d,
+            parsedDate: parseDate(d.date)
+        }));
+
+        // Process data for pie chart
+        const categoryTotals = {};
+        transactions.forEach(t => {
+            categoryTotals[t.category] = (categoryTotals[t.category] || 0) + Math.abs(t.amount);
+        });
+        const pieData = Object.entries(categoryTotals).map(([category, amount]) => ({ category, amount }));
+
+        // Create tooltip (shared across all charts)
+        const tooltip = d3.select("body").append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0);
+
+        // 1. Bar Chart
+        (function() {
+            const container = d3.select("#barChart .chart-svg-container");
+            const containerWidth = container.node().clientWidth;
+            const containerHeight = container.node().clientHeight;
+            
+            // Set up dimensions
+            const margin = { top: 30, right: 30, bottom: 50, left: 60 };
+            const width = containerWidth - margin.left - margin.right;
+            const height = containerHeight - margin.top - margin.bottom;
+
+            // Create SVG
+            const svg = container.append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            // Add gradients
+            const defs = svg.append("defs");
+            
+            // Neon green gradient
+            const neonGreenGradient = defs.append("linearGradient")
+                .attr("id", "neon-green-gradient")
+                .attr("x1", "0%").attr("y1", "0%")
+                .attr("x2", "0%").attr("y2", "100%");
+                
+            neonGreenGradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", "#0ff0b3")
+                .attr("stop-opacity", 1);
+                
+            neonGreenGradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", "#00c08b")
+                .attr("stop-opacity", 1);
+
+            // Neon blue gradient
+            const neonBlueGradient = defs.append("linearGradient")
+                .attr("id", "neon-blue-gradient")
+                .attr("x1", "0%").attr("y1", "0%")
+                .attr("x2", "0%").attr("y2", "100%");
+                
+            neonBlueGradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", "#2d7dd2")
+                .attr("stop-opacity", 1);
+                
+            neonBlueGradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", "#1a5b9e")
+                .attr("stop-opacity", 1);
+
+            // Create scales
+            const x = d3.scaleBand()
+                .domain(transactions.map(d => d.date))
+                .range([0, width])
+                .padding(0.2);
+
+            const y = d3.scaleLinear()
+                .domain([d3.min(transactions, d => d.amount) * 1.1, d3.max(transactions, d => d.amount) * 1.1])
+                .range([height, 0]);
+
+            // Add axes
+            svg.append("g")
+                .attr("class", "axis x-axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x))
+                .selectAll("text")
+                    .attr("transform", "rotate(-45)")
+                    .attr("text-anchor", "end")
+                    .attr("dx", "-0.8em")
+                    .attr("dy", "0.15em")
+                    .style("fill", "var(--text-muted)");
+
+            svg.append("g")
+                .attr("class", "axis y-axis")
+                .call(d3.axisLeft(y).ticks(5).tickFormat(d => "$" + d))
+                .selectAll("text")
+                    .style("fill", "var(--text-muted)");
+
+            // Create bars with animation
+            svg.selectAll(".bar")
+                .data(transactions)
+                .enter()
+                .append("rect")
+                .attr("class", "bar")
+                .attr("x", d => x(d.date))
+                .attr("width", x.bandwidth())
+                .attr("y", height)
+                .attr("height", 0)
+                .attr("fill", d => d.type === "income" ? "url(#neon-green-gradient)" : "url(#neon-blue-gradient)")
+                .on("mouseover", function(event, d) {
+                    d3.select(this).attr("opacity", 0.9);
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .95);
+                    tooltip.html(`<strong>${d.category}</strong><br/>$${Math.abs(d.amount)}<br/>${d.date}`)
+                        .style("left", (event.pageX + 15) + "px")
+                        .style("top", (event.pageY - 30) + "px");
+                })
+                .on("mouseout", function() {
+                    d3.select(this).attr("opacity", 1);
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                })
+                .transition()
+                .duration(800)
+                .delay((d, i) => i * 100)
+                .attr("y", d => y(Math.max(0, d.amount)))
+                .attr("height", d => Math.abs(y(d.amount) - y(0)));
+        })();
+
+        // 2. Pie Chart
+        (function() {
+            const container = d3.select("#pieChart .chart-svg-container");
+            const containerWidth = container.node().clientWidth;
+            const containerHeight = container.node().clientHeight;
+            
+            // Set up dimensions
+            const radius = Math.min(containerWidth, containerHeight) / 2 - 30;
+
+            // Create SVG
+            const svg = container.append("svg")
+                .attr("width", containerWidth)
+                .attr("height", containerHeight)
+                .append("g")
+                .attr("transform", `translate(${containerWidth/2},${containerHeight/2})`);
+
+            // Create pie layout
+            const pie = d3.pie()
+                .value(d => d.amount)
+                .sort(null);
+
+            // Create arc generator
+            const arc = d3.arc()
+                .innerRadius(radius * 0.5)
+                .outerRadius(radius);
+
+            // Add gradients
+            const defs = svg.append("defs");
+            
+            // Create neon gradients for each category
+            const neonColors = [
+                ["#0ff0b3", "#00c08b"], // neon green
+                ["#2d7dd2", "#1a5b9e"], // neon blue
+                ["#0ff0f0", "#00c0c0"], // cyan
+                ["#2d7df2", "#1a5bc0"], // bright blue
+                ["#0ff0d0", "#00c0a0"], // teal
+                ["#2d7de2", "#1a5bb0"]  // light blue
+            ];
+            
+            pieData.forEach((d, i) => {
+                const colorIndex = i % neonColors.length;
+                const gradient = defs.append("linearGradient")
+                    .attr("id", `gradient-${i}`)
+                    .attr("x1", "0%").attr("y1", "0%")
+                    .attr("x2", "100%").attr("y2", "100%");
+                    
+                gradient.append("stop")
+                    .attr("offset", "0%")
+                    .attr("stop-color", neonColors[colorIndex][0])
+                    .attr("stop-opacity", 1);
+                    
+                gradient.append("stop")
+                    .attr("offset", "100%")
+                    .attr("stop-color", neonColors[colorIndex][1])
+                    .attr("stop-opacity", 1);
+            });
+
+            // Draw pie slices with animation
+            const arcs = svg.selectAll(".arc")
+                .data(pie(pieData))
+                .enter()
+                .append("g")
+                .attr("class", "arc");
+
+            arcs.append("path")
+                .attr("d", arc)
+                .attr("fill", (d, i) => `url(#gradient-${i})`)
+                .attr("stroke", "var(--darker-bg)")
+                .attr("stroke-width", 2)
+                .on("mouseover", function(event, d) {
+                    d3.select(this).attr("stroke-width", 4)
+                        .attr("filter", "url(#glow)");
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .95);
+                    tooltip.html(`<strong>${d.data.category}</strong><br/>$${d.data.amount}<br/>${((d.endAngle - d.startAngle) / (2 * Math.PI) * 100).toFixed(1)}%`)
+                        .style("left", (event.pageX + 15) + "px")
+                        .style("top", (event.pageY - 30) + "px");
+                })
+                .on("mouseout", function() {
+                    d3.select(this).attr("stroke-width", 2)
+                        .attr("filter", null);
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                })
+                .transition()
+                .duration(1000)
+                .attrTween("d", function(d) {
+                    const interpolate = d3.interpolate({ startAngle: 0, endAngle: 0 }, d);
+                    return function(t) {
+                        return arc(interpolate(t));
+                    };
+                });
+
+            // Add glow filter
+            defs.append("filter")
+                .attr("id", "glow")
+                .append("feGaussianBlur")
+                .attr("stdDeviation", "3")
+                .attr("result", "coloredBlur");
+                
+            const feMerge = defs.select("filter")
+                .append("feMerge");
+                
+            feMerge.append("feMergeNode")
+                .attr("in", "coloredBlur");
+            feMerge.append("feMergeNode")
+                .attr("in", "SourceGraphic");
+
+            // Add legend
+            const legend = svg.selectAll(".legend")
+                .data(pieData)
+                .enter()
+                .append("g")
+                .attr("class", "legend-item")
+                .attr("transform", (d, i) => `translate(${radius + 30},${i * 25 - (pieData.length * 25)/2})`);
+
+            legend.append("rect")
+                .attr("width", 18)
+                .attr("height", 18)
+                .attr("rx", 4)
+                .attr("ry", 4)
+                .attr("fill", (d, i) => `url(#gradient-${i})`);
+
+            legend.append("text")
+                .attr("x", 24)
+                .attr("y", 9)
+                .attr("dy", "0.35em")
+                .text(d => d.category)
+                .style("font-size", "12px")
+                .style("fill", "var(--text-color)");
+        })();
+
+        // 3. Line Chart
+        (function() {
+            const container = d3.select("#lineChart .chart-svg-container");
+            const containerWidth = container.node().clientWidth;
+            const containerHeight = container.node().clientHeight;
+            
+            // Set up dimensions
+            const margin = { top: 30, right: 80, bottom: 50, left: 60 };
+            const width = containerWidth - margin.left - margin.right;
+            const height = containerHeight - margin.top - margin.bottom;
+
+            // Create SVG
+            const svg = container.append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            // Add gradients
+            const defs = svg.append("defs");
+            
+            // Neon green line gradient
+            const neonGreenLineGradient = defs.append("linearGradient")
+                .attr("id", "neon-green-line-gradient")
+                .attr("x1", "0%").attr("y1", "0%")
+                .attr("x2", "100%").attr("y2", "0%");
+                
+            neonGreenLineGradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", "#0ff0b3")
+                .attr("stop-opacity", 1);
+                
+            neonGreenLineGradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", "#00c08b")
+                .attr("stop-opacity", 1);
+
+            // Neon blue line gradient
+            const neonBlueLineGradient = defs.append("linearGradient")
+                .attr("id", "neon-blue-line-gradient")
+                .attr("x1", "0%").attr("y1", "0%")
+                .attr("x2", "100%").attr("y2", "0%");
+                
+            neonBlueLineGradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", "#2d7dd2")
+                .attr("stop-opacity", 1);
+                
+            neonBlueLineGradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", "#1a5b9e")
+                .attr("stop-opacity", 1);
+
+            // Neon green area gradient
+            const neonGreenAreaGradient = defs.append("linearGradient")
+                .attr("id", "neon-green-area-gradient")
+                .attr("x1", "0%").attr("y1", "0%")
+                .attr("x2", "0%").attr("y2", "100%");
+                
+            neonGreenAreaGradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", "#0ff0b3")
+                .attr("stop-opacity", 0.3);
+                
+            neonGreenAreaGradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", "#00c08b")
+                .attr("stop-opacity", 0.1);
+
+            // Neon blue area gradient
+            const neonBlueAreaGradient = defs.append("linearGradient")
+                .attr("id", "neon-blue-area-gradient")
+                .attr("x1", "0%").attr("y1", "0%")
+                .attr("x2", "0%").attr("y2", "100%");
+                
+            neonBlueAreaGradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", "#2d7dd2")
+                .attr("stop-opacity", 0.3);
+                
+            neonBlueAreaGradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", "#1a5b9e")
+                .attr("stop-opacity", 0.1);
+
+            // Create scales
+            const x = d3.scaleTime()
+                .domain(d3.extent(transactionsWithDates, d => d.parsedDate))
+                .range([0, width]);
+
+            const y = d3.scaleLinear()
+                .domain([d3.min(transactions, d => d.amount) * 1.2, d3.max(transactions, d => d.amount) * 1.2])
+                .range([height, 0]);
+
+            // Create line generators
+            const incomeLine = d3.line()
+                .x(d => x(d.parsedDate))
+                .y(d => y(d.type === "income" ? d.amount : 0))
+                .curve(d3.curveMonotoneX);
+
+            const expenseLine = d3.line()
+                .x(d => x(d.parsedDate))
+                .y(d => y(d.type === "expense" ? d.amount : 0))
+                .curve(d3.curveMonotoneX);
+
+            // Create area generators
+            const incomeArea = d3.area()
+                .x(d => x(d.parsedDate))
+                .y0(y(0))
+                .y1(d => y(d.type === "income" ? d.amount : 0))
+                .curve(d3.curveMonotoneX);
+
+            const expenseArea = d3.area()
+                .x(d => x(d.parsedDate))
+                .y0(y(0))
+                .y1(d => y(d.type === "expense" ? d.amount : 0))
+                .curve(d3.curveMonotoneX);
+
+            // Add areas
+            svg.append("path")
+                .datum(transactionsWithDates)
+                .attr("class", "area income-area")
+                .attr("d", incomeArea)
+                .attr("fill", "url(#neon-green-area-gradient)")
+                .attr("opacity", 0)
+                .transition()
+                .duration(1000)
+                .attr("opacity", 1);
+
+            svg.append("path")
+                .datum(transactionsWithDates)
+                .attr("class", "area expense-area")
+                .attr("d", expenseArea)
+                .attr("fill", "url(#neon-blue-area-gradient)")
+                .attr("opacity", 0)
+                .transition()
+                .duration(1000)
+                .attr("opacity", 1);
+
+            // Add lines
+            svg.append("path")
+                .datum(transactionsWithDates)
+                .attr("class", "line income-line")
+                .attr("d", incomeLine)
+                .attr("stroke", "url(#neon-green-line-gradient)")
+                .attr("stroke-dasharray", function() { return this.getTotalLength() + " " + this.getTotalLength(); })
+                .attr("stroke-dashoffset", function() { return this.getTotalLength(); })
+                .transition()
+                .duration(1500)
+                .attr("stroke-dashoffset", 0);
+
+            svg.append("path")
+                .datum(transactionsWithDates)
+                .attr("class", "line expense-line")
+                .attr("d", expenseLine)
+                .attr("stroke", "url(#neon-blue-line-gradient)")
+                .attr("stroke-dasharray", function() { return this.getTotalLength() + " " + this.getTotalLength(); })
+                .attr("stroke-dashoffset", function() { return this.getTotalLength(); })
+                .transition()
+                .duration(1500)
+                .attr("stroke-dashoffset", 0);
+
+            // Add axes
+            svg.append("g")
+                .attr("class", "axis x-axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d")))
+                .selectAll("text")
+                    .style("fill", "var(--text-muted)");
+
+            svg.append("g")
+                .attr("class", "axis y-axis")
+                .call(d3.axisLeft(y).ticks(5).tickFormat(d => "$" + d))
+                .selectAll("text")
+                    .style("fill", "var(--text-muted)");
+
+            // Add dots for data points
+            const dots = svg.selectAll(".dot")
+                .data(transactionsWithDates)
+                .enter()
+                .append("circle")
+                .attr("class", d => `dot ${d.type}-dot`)
+                .attr("cx", d => x(d.parsedDate))
+                .attr("cy", height)
+                .attr("r", 6)
+                .attr("fill", d => d.type === "income" ? "url(#neon-green-line-gradient)" : "url(#neon-blue-line-gradient)")
+                .attr("opacity", 0)
+                .on("mouseover", function(event, d) {
+                    d3.select(this).attr("r", 8);
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .95);
+                    tooltip.html(`<strong>${d.category}</strong><br/>$${Math.abs(d.amount)}<br/>${d3.timeFormat("%b %d, %Y")(d.parsedDate)}`)
+                        .style("left", (event.pageX + 15) + "px")
+                        .style("top", (event.pageY - 30) + "px");
+                })
+                .on("mouseout", function() {
+                    d3.select(this).attr("r", 6);
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                });
+
+            // Animate dots
+            dots.transition()
+                .delay((d, i) => i * 100 + 1000)
+                .duration(500)
+                .attr("cy", d => y(d.amount))
+                .attr("opacity", 1);
+
+            // Add legend
+            const legend = svg.append("g")
+                .attr("class", "legend")
+                .attr("transform", `translate(${width - 100}, 20)`);
+
+            // Income legend
+            legend.append("rect")
+                .attr("x", 0)
+                .attr("y", 0)
+                .attr("width", 18)
+                .attr("height", 18)
+                .attr("rx", 4)
+                .attr("ry", 4)
+                .attr("fill", "url(#neon-green-line-gradient)");
+
+            legend.append("text")
+                .attr("x", 24)
+                .attr("y", 9)
+                .attr("dy", "0.35em")
+                .text("Income")
+                .style("fill", "var(--text-color)");
+
+            // Expense legend
+            legend.append("rect")
+                .attr("x", 0)
+                .attr("y", 25)
+                .attr("width", 18)
+                .attr("height", 18)
+                .attr("rx", 4)
+                .attr("ry", 4)
+                .attr("fill", "url(#neon-blue-line-gradient)");
+
+            legend.append("text")
+                .attr("x", 24)
+                .attr("y", 34)
+                .attr("dy", "0.35em")
+                .text("Expense")
+                .style("fill", "var(--text-color)");
+        })();
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            // In a real implementation, you would redraw the charts here
+            // For this example, we'll just reload the page
+            location.reload();
+        });
+    </script>
+</body>
+</html>
